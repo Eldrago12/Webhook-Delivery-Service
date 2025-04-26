@@ -1,0 +1,155 @@
+# Removed: version: '3.8'
+
+services:
+  db:
+    image: postgres:13-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-webhook_db}
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-user} -d ${POSTGRES_DB:-webhook_db}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+    ports:
+      - "5672:5672"
+      - "15672:15672" # Management UI port
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq/
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:6-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data/
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  migrator:
+    build: .
+    command: alembic upgrade head
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-webhook_db}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    build: .
+    command: gunicorn -w 4 -b 0.0.0.0:5000 wsgi:app
+    ports:
+      - "8000:5000"
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      RABBITMQ_BROKER_URL: ${CELERY_BROKER_URL}
+      REDIS_CACHE_URL: ${REDIS_CACHE_URL}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SECRET_KEY: ${SECRET_KEY}
+      DELIVERY_TIMEOUT_SECONDS: ${DELIVERY_TIMEOUT_SECONDS}
+      WEBHOOK_SECRET_HEADER: ${WEBHOOK_SECRET_HEADER}
+      WEBHOOK_EVENT_TYPE_HEADER: ${WEBHOOK_EVENT_TYPE_HEADER}
+      CACHE_EXPIRY_SECONDS: ${CACHE_EXPIRY_SECONDS}
+
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+
+  worker:
+    build: .
+    command: celery -A webhook_service.celery_app worker -l info -P eventlet
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      RABBITMQ_BROKER_URL: ${CELERY_BROKER_URL}
+      REDIS_CACHE_URL: ${REDIS_CACHE_URL}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      DELIVERY_TIMEOUT_SECONDS: ${DELIVERY_TIMEOUT_SECONDS}
+      MAX_RETRIES: ${MAX_RETRIES}
+      RETRY_BASE_DELAY_SECONDS: ${RETRY_BASE_DELAY_SECONDS}
+      RETRY_FACTOR: ${RETRY_FACTOR}
+      MAX_RETRY_DELAY_SECONDS: ${MAX_RETRY_DELAY_SECONDS}
+      CACHE_EXPIRY_SECONDS: ${CACHE_EXPIRY_SECONDS}
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+
+  beat:
+    build: .
+    command: celery -A webhook_service.celery_app beat -l info --scheduler celery.beat.PersistentScheduler -s /tmp/celerybeat-schedule
+    volumes:
+      - .:/app
+      - celerybeat_data:/tmp/
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      RABBITMQ_BROKER_URL: ${CELERY_BROKER_URL}
+      REDIS_CACHE_URL: ${REDIS_CACHE_URL}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      LOG_RETENTION_HOURS: ${LOG_RETENTION_HOURS}
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  redis_data:
+  celerybeat_data:

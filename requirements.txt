@@ -1,0 +1,12 @@
+Flask==2.3.3
+SQLAlchemy==2.0.29
+psycopg2-binary==2.9.9
+redis==5.0.4
+celery==5.3.6
+kombu==5.3.6  # Celery's messaging library, needed for RabbitMQ
+requests==2.31.0
+python-dotenv==1.0.1
+marshmallow==3.21.1
+alembic==1.13.1
+gunicorn==22.0.0 # For production WSGI server
+eventlet

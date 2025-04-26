@@ -1,0 +1,288 @@
+{
+  "family": "webhook-service-task",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::590183816913:role/taskRole",
+  "containerDefinitions": [
+    {
+      "name": "db",
+      "image": "postgres:13-alpine",
+      "portMappings": [
+        {
+          "containerPort": 5432,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "POSTGRES_USER",
+          "value": "user"
+        },
+        {
+          "name": "POSTGRES_PASSWORD",
+          "value": "password"
+        },
+        {
+          "name": "POSTGRES_DB",
+          "value": "webhook_db"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/webhook-service-task",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "db"
+        }
+      },
+      "essential": true,
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "pg_isready -U user -d webhook_db -h 127.0.0.1"
+        ],
+        "interval": 10,
+        "timeout": 5,
+        "retries": 5,
+        "startPeriod": 30
+      }
+    },
+    {
+      "name": "rabbitmq",
+      "image": "rabbitmq:3-management-alpine",
+      "portMappings": [
+        {
+          "containerPort": 5672,
+          "protocol": "tcp"
+        },
+        {
+          "containerPort": 15672,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "RABBITMQ_LONGNAME",
+          "value": "rabbitmq@localhost"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/webhook-service-task",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "rabbitmq"
+        }
+      },
+      "essential": true,
+      "healthCheck": {
+        "command": ["CMD-SHELL", "rabbitmq-diagnostics -q ping"],
+        "interval": 10,
+        "timeout": 5,
+        "retries": 5,
+        "startPeriod": 30
+      },
+      "user": "999:999"
+    },
+    {
+      "name": "redis",
+      "image": "redis:6-alpine",
+      "portMappings": [
+        {
+          "containerPort": 6379,
+          "protocol": "tcp"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/webhook-service-task",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "redis"
+        }
+      },
+      "essential": true,
+      "healthCheck": {
+        "command": ["CMD-SHELL", "redis-cli ping"],
+        "interval": 10,
+        "timeout": 5,
+        "retries": 5,
+        "startPeriod": 10
+      }
+    },
+    {
+      "name": "app",
+      "image": "590183816913.dkr.ecr.us-east-1.amazonaws.com/webhook:latest",
+      "command": ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "wsgi:app"],
+      "portMappings": [
+        {
+          "containerPort": 5000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "DATABASE_URL",
+          "value": "postgresql://user:password@db:5432/webhook_db"
+        },
+        {
+          "name": "RABBITMQ_BROKER_URL",
+          "value": "amqp://guest:guest@rabbitmq:5672//"
+        },
+        {
+          "name": "REDIS_CACHE_URL",
+          "value": "redis://redis:6379/0"
+        },
+        {
+          "name": "DEBUG",
+          "value": "False"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/webhook-service-task",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "app"
+        }
+      },
+      "essential": true,
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:5000/ || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 15
+      },
+      "dependsOn": [
+        {
+          "containerName": "db",
+          "condition": "HEALTHY"
+        },
+        {
+          "containerName": "rabbitmq",
+          "condition": "HEALTHY"
+        },
+        {
+          "containerName": "redis",
+          "condition": "HEALTHY"
+        }
+      ]
+    },
+    {
+      "name": "worker",
+      "image": "590183816913.dkr.ecr.us-east-1.amazonaws.com/webhook:latest",
+      "command": [
+        "celery",
+        "-A",
+        "webhook_service.celery_app",
+        "worker",
+        "-l",
+        "info",
+        "-P",
+        "eventlet"
+      ],
+      "environment": [
+        {
+          "name": "DATABASE_URL",
+          "value": "postgresql://user:password@db:5432/webhook_db"
+        },
+        {
+          "name": "RABBITMQ_BROKER_URL",
+          "value": "amqp://guest:guest@rabbitmq:5672//"
+        },
+        {
+          "name": "REDIS_CACHE_URL",
+          "value": "redis://redis:6379/0"
+        },
+        {
+          "name": "CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP",
+          "value": "True"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/webhook-service-task",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "worker"
+        }
+      },
+      "essential": true,
+      "dependsOn": [
+        {
+          "containerName": "rabbitmq",
+          "condition": "HEALTHY"
+        },
+        {
+          "containerName": "db",
+          "condition": "HEALTHY"
+        },
+        {
+          "containerName": "redis",
+          "condition": "HEALTHY"
+        }
+      ]
+    },
+    {
+      "name": "beat",
+      "image": "590183816913.dkr.ecr.us-east-1.amazonaws.com/webhook:latest",
+      "command": [
+        "celery",
+        "-A",
+        "webhook_service.celery_app",
+        "beat",
+        "-l",
+        "info",
+        "--pidfile=/tmp/celerybeat.pid",
+        "-s",
+        "/tmp/celerybeat-schedule"
+      ],
+      "environment": [
+        {
+          "name": "DATABASE_URL",
+          "value": "postgresql://user:password@db:5432/webhook_db"
+        },
+        {
+          "name": "RABBITMQ_BROKER_URL",
+          "value": "amqp://guest:guest@rabbitmq:5672//"
+        },
+        {
+          "name": "REDIS_CACHE_URL",
+          "value": "redis://redis:6379/0"
+        },
+        {
+          "name": "CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP",
+          "value": "True"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/webhook-service-task",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "beat"
+        }
+      },
+      "essential": true,
+      "cpu": 64,
+      "memory": 128,
+      "dependsOn": [
+        {
+          "containerName": "rabbitmq",
+          "condition": "HEALTHY"
+        },
+        {
+          "containerName": "db",
+          "condition": "HEALTHY"
+        },
+        {
+          "containerName": "redis",
+          "condition": "HEALTHY"
+        }
+      ]
+    }
+  ]
+}
