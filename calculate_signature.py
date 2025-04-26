@@ -2,16 +2,16 @@ import hmac
 import hashlib
 import json
 
-secret = "mytestsecret"
+secret = "mysecret"
 
 payload_dict = {
   "event": "order.created",
   "data": {
     "order_id": 12345,
-    "amount": 50.0,
-    "customer": "test@example.com"
+    "amount": 100.0,
+    "customer": "demo@example.com"
   },
-  "timestamp": "2025-04-26T10:05:00Z"
+  "timestamp": "2025-04-26T21:47:17.140015+00:00"
 }
 
 payload_string = json.dumps(payload_dict)

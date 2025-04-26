@@ -1,3 +1,4 @@
 .roproject/
 myenv/
 __pycache__/
+.DS_Store

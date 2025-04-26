@@ -61,13 +61,8 @@ class Config:
 
     # Caching Settings
     CACHE_EXPIRY_SECONDS = int(os.environ.get("CACHE_EXPIRY_SECONDS", "3600")) # Cache subscriptions for 1 hour
-
-    # Bonus Points Settings (Optional)
     WEBHOOK_SECRET_HEADER = os.environ.get("WEBHOOK_SECRET_HEADER", "X-Hub-Signature-256")
     WEBHOOK_EVENT_TYPE_HEADER = os.environ.get("WEBHOOK_EVENT_TYPE_HEADER", "X-Event-Type")
-    # Secret key used for signing/verification if not stored per-subscription
-    # Or used as a fallback if subscription secret is not set
-    # GLOBAL_WEBHOOK_SECRET = os.environ.get("GLOBAL_WEBHOOK_SECRET", "your_global_fallback_secret")
 
     # Flask Settings
     SECRET_KEY = os.environ.get("SECRET_KEY", "super-secret-dev-key") # Required for Flask sessions/security

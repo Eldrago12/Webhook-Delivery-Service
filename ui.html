@@ -1,0 +1,1204 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Webhook Service UI</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            /* Optional: Add some basic custom styles not easily done with Tailwind */
+            body {
+                font-family:
+                    ui-sans-serif,
+                    system-ui,
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    Roboto,
+                    "Helvetica Neue",
+                    Arial,
+                    "Noto Sans",
+                    sans-serif,
+                    "Apple Color Emoji",
+                    "Segoe UI Emoji",
+                    "Noto Color Emoji"; /* Using Tailwind's default sans font stack */
+            }
+            .container {
+                max-width: 960px;
+            }
+            .response-area {
+                background-color: #f3f4f6; /* gray-100 */
+                padding: 1rem;
+                border-radius: 0.5rem; /* More rounded corners */
+                overflow-x: auto; /* Add horizontal scroll for long responses */
+                white-space: pre-wrap; /* Preserve whitespace and wrap text */
+                word-wrap: break-word; /* Break long words */
+                font-family:
+                    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+                    "Liberation Mono", "Courier New", monospace; /* Monospace font for code/JSON */
+                font-size: 0.875rem; /* text-sm */
+                color: #1f2937; /* gray-800 */
+                border: 1px solid #d1d5db; /* gray-300 */
+            }
+            .section {
+                border: 1px solid #d1d5db; /* gray-300 */
+                border-radius: 0.5rem; /* Rounded corners for sections */
+            }
+            /* Style for buttons to add hover/active effects */
+            button {
+                transition:
+                    background-color 0.2s ease-in-out,
+                    transform 0.1s ease-in-out;
+            }
+            button:hover {
+                transform: translateY(-1px);
+            }
+            button:active {
+                transform: translateY(0);
+            }
+        </style>
+    </head>
+    <body class="bg-gray-50 text-gray-800 p-4 sm:p-6">
+        <div
+            class="container mx-auto bg-white rounded-xl shadow-2xl p-6 lg:p-8"
+        >
+            <h1
+                class="text-3xl sm:text-4xl font-extrabold mb-8 text-center text-gray-900"
+            >
+                Webhook Service Explorer
+            </h1>
+
+            <div class="mb-8 p-6 section bg-gray-50">
+                <h2 class="text-2xl font-bold mb-5 text-gray-800">
+                    Service Configuration
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label
+                            for="serviceUrl"
+                            class="block text-sm font-medium text-gray-700 mb-1"
+                            >Service Base URL:</label
+                        >
+                        <input
+                            type="text"
+                            id="serviceUrl"
+                            value="http://54.175.17.226:8000"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 text-gray-900 bg-white"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            for="subscriptionSecret"
+                            class="block text-sm font-medium text-gray-700 mb-1"
+                            >Default Subscription Secret (for
+                            Creation/Update):</label
+                        >
+                        <input
+                            type="text"
+                            id="subscriptionSecret"
+                            placeholder="Leave blank to generate"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 text-gray-900 bg-white"
+                        />
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                    <div>
+                        <label
+                            for="secretHeaderName"
+                            class="block text-sm font-medium text-gray-700 mb-1"
+                            >Signature Header Name:</label
+                        >
+                        <input
+                            type="text"
+                            id="secretHeaderName"
+                            value="X-Hub-Signature-256"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 text-gray-900 bg-white"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            for="eventTypeHeaderName"
+                            class="block text-sm font-medium text-gray-700 mb-1"
+                            >Event Type Header Name:</label
+                        >
+                        <input
+                            type="text"
+                            id="eventTypeHeaderName"
+                            value="X-Event-Type"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 text-gray-900 bg-white"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-8 p-6 section bg-white">
+                <h2 class="text-2xl font-bold mb-5 text-gray-800">
+                    Subscriptions (<code class="text-blue-700"
+                        >/api/subscriptions</code
+                    >)
+                </h2>
+
+                <div class="mb-6 pb-6 border-b border-gray-200">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-700">
+                        Create Subscription (<span
+                            class="font-mono text-green-700"
+                            >POST</span
+                        >)
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label
+                                for="createTargetUrl"
+                                class="block text-sm font-medium text-gray-700 mb-1"
+                                >Target URL:</label
+                            >
+                            <input
+                                type="url"
+                                id="createTargetUrl"
+                                placeholder="e.g., https://webhook.site/..."
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 text-gray-900"
+                            />
+                        </div>
+                        <div>
+                            <label
+                                for="createSecret"
+                                class="block text-sm font-medium text-gray-700 mb-1"
+                                >Secret:</label
+                            >
+                            <input
+                                type="text"
+                                id="createSecret"
+                                placeholder="Leave blank to generate"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 text-gray-900"
+                            />
+                        </div>
+                        <div class="md:col-span-2">
+                            <label
+                                for="createEventTypeFilter"
+                                class="block text-sm font-medium text-gray-700 mb-1"
+                                >Event Type Filter:</label
+                            >
+                            <input
+                                type="text"
+                                id="createEventTypeFilter"
+                                placeholder="e.g., order.created"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 text-gray-900"
+                            />
+                        </div>
+                    </div>
+                    <button
+                        id="createSubscriptionBtn"
+                        class="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-md shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    >
+                        Create Subscription
+                    </button>
+                    <div
+                        id="createSubscriptionResponse"
+                        class="response-area mt-5 text-sm text-gray-800"
+                    ></div>
+                </div>
+
+                <div class="mb-6 pb-6 border-b border-gray-200">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-700">
+                        List Subscriptions (<span
+                            class="font-mono text-blue-700"
+                            >GET</span
+                        >)
+                    </h3>
+                    <button
+                        id="listSubscriptionsBtn"
+                        class="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-md shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    >
+                        List Subscriptions
+                    </button>
+                    <div
+                        id="listSubscriptionsResponse"
+                        class="response-area mt-5 text-sm text-gray-800"
+                    ></div>
+                </div>
+
+                <div class="mb-6 pb-6 border-b border-gray-200">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-700">
+                        Get Subscription by ID (<span
+                            class="font-mono text-blue-700"
+                            >GET</span
+                        >)
+                    </h3>
+                    <div class="flex flex-col md:flex-row gap-4 mb-4 items-end">
+                        <div class="flex-grow">
+                            <label
+                                for="getSubscriptionId"
+                                class="block text-sm font-medium text-gray-700 mb-1"
+                                >Subscription ID:</label
+                            >
+                            <input
+                                type="text"
+                                id="getSubscriptionId"
+                                placeholder="Enter Subscription ID"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 text-gray-900"
+                            />
+                        </div>
+                        <div>
+                            <button
+                                id="getSubscriptionBtn"
+                                class="w-full md:w-auto px-6 py-2.5 bg-blue-600 text-white font-bold rounded-md shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            >
+                                Get Subscription
+                            </button>
+                        </div>
+                    </div>
+                    <div
+                        id="getSubscriptionResponse"
+                        class="response-area mt-5 text-sm text-gray-800"
+                    ></div>
+                </div>
+
+                <div class="mb-6 pb-6 border-b border-gray-200">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-700">
+                        Update Subscription by ID (<span
+                            class="font-mono text-yellow-700"
+                            >PUT</span
+                        >)
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label
+                                for="updateSubscriptionId"
+                                class="block text-sm font-medium text-gray-700 mb-1"
+                                >Subscription ID:</label
+                            >
+                            <input
+                                type="text"
+                                id="updateSubscriptionId"
+                                placeholder="Enter Subscription ID"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 text-gray-900"
+                            />
+                        </div>
+                        <div>
+                            <label
+                                for="updateTargetUrl"
+                                class="block text-sm font-medium text-gray-700 mb-1"
+                                >New Target URL:</label
+                            >
+                            <input
+                                type="url"
+                                id="updateTargetUrl"
+                                placeholder="e.g., https://new-webhook.site/..."
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 text-gray-900"
+                            />
+                        </div>
+                        <div>
+                            <label
+                                for="updateSecret"
+                                class="block text-sm font-medium text-gray-700 mb-1"
+                                >New Secret:</label
+                            >
+                            <input
+                                type="text"
+                                id="updateSecret"
+                                placeholder="Leave blank to keep current"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 text-gray-900"
+                            />
+                        </div>
+                        <div>
+                            <label
+                                for="updateEventTypeFilter"
+                                class="block text-sm font-medium text-gray-700 mb-1"
+                                >New Event Type Filter:</label
+                            >
+                            <input
+                                type="text"
+                                id="updateEventTypeFilter"
+                                placeholder="e.g., product.updated"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 text-gray-900"
+                            />
+                        </div>
+                    </div>
+                    <button
+                        id="updateSubscriptionBtn"
+                        class="px-6 py-2.5 bg-yellow-600 text-white font-bold rounded-md shadow-lg hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
+                    >
+                        Update Subscription
+                    </button>
+                    <div
+                        id="updateSubscriptionResponse"
+                        class="response-area mt-5 text-sm text-gray-800"
+                    ></div>
+                </div>
+
+                <div>
+                    <h3 class="text-xl font-semibold mb-4 text-gray-700">
+                        Delete Subscription by ID (<span
+                            class="font-mono text-red-700"
+                            >DELETE</span
+                        >)
+                    </h3>
+                    <div class="flex flex-col md:flex-row gap-4 mb-4 items-end">
+                        <div class="flex-grow">
+                            <label
+                                for="deleteSubscriptionId"
+                                class="block text-sm font-medium text-gray-700 mb-1"
+                                >Subscription ID:</label
+                            >
+                            <input
+                                type="text"
+                                id="deleteSubscriptionId"
+                                placeholder="Enter Subscription ID"
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 text-gray-900"
+                            />
+                        </div>
+                        <div>
+                            <button
+                                id="deleteSubscriptionBtn"
+                                class="w-full md:w-auto px-6 py-2.5 bg-red-600 text-white font-bold rounded-md shadow-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                            >
+                                Delete Subscription
+                            </button>
+                        </div>
+                    </div>
+                    <div
+                        id="deleteSubscriptionResponse"
+                        class="response-area mt-5 text-sm text-gray-800"
+                    ></div>
+                </div>
+            </div>
+
+            <div class="mb-8 p-6 section bg-gray-50">
+                <h2 class="text-xl font-bold mb-5 text-gray-800">
+                    Ingestion (<code class="text-green-700"
+                        >/api/ingest/{sub_id}</code
+                    >)
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                    <div>
+                        <label
+                            for="ingestSubscriptionId"
+                            class="block text-sm font-medium text-gray-700 mb-1"
+                            >Subscription ID:</label
+                        >
+                        <input
+                            type="text"
+                            id="ingestSubscriptionId"
+                            placeholder="Enter Subscription ID"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 text-gray-900"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            for="ingestEventType"
+                            class="block text-sm font-medium text-gray-700 mb-1"
+                            >Event Type (<code class="font-mono"
+                                >X-Event-Type</code
+                            >
+                            Header):</label
+                        >
+                        <input
+                            type="text"
+                            id="ingestEventType"
+                            value="order.created"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 text-gray-900"
+                        />
+                    </div>
+                </div>
+                <div class="mb-6">
+                    <label
+                        for="ingestPayload"
+                        class="block text-sm font-medium text-gray-700 mb-1"
+                        >Payload (JSON Body):</label
+                    >
+                    <textarea
+                        id="ingestPayload"
+                        rows="8"
+                        class="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 text-gray-900 font-mono text-sm"
+                    >
+{
+  "event": "order.created",
+  "data": {
+    "order_id": 12345,
+    "amount": 100.0,
+    "customer": "demo@example.com"
+  },
+  "timestamp": "2025-04-26T21:47:17.140015+00:00"
+}
+                </textarea
+                    >
+                </div>
+
+                <div
+                    class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md"
+                >
+                    <h3 class="text-lg font-medium mb-2 text-blue-800">
+                        Signature Calculation (Client-Side)
+                    </h3>
+                    <p class="text-sm text-blue-700 mb-2">
+                        Using the Payload text above and the **Fetched**
+                        Subscription Secret:
+                    </p>
+                    <div class="mb-2">
+                        <label
+                            class="block text-sm font-medium text-blue-700 mb-1"
+                            >Secret Used:</label
+                        >
+                        <div
+                            id="secretUsedDisplay"
+                            class="response-area bg-white text-gray-900 text-xs p-2 rounded-md"
+                        >
+                            Enter Subscription ID to fetch secret.
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label
+                            class="block text-sm font-medium text-blue-700 mb-1"
+                            >Payload String to Sign:</label
+                        >
+                        <div
+                            id="payloadStringToSign"
+                            class="response-area bg-white text-gray-900 text-xs p-2 rounded-md"
+                        >
+                            Enter Payload to see string.
+                        </div>
+                    </div>
+                    <button
+                        id="calculateSignatureBtn"
+                        class="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-md shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    >
+                        Calculate Signature
+                    </button>
+                    <div class="mt-4">
+                        <label
+                            class="block text-sm font-medium text-blue-700 mb-1"
+                            >Calculated Signature (<code class="font-mono"
+                                >X-Hub-Signature-256</code
+                            >):</label
+                        >
+                        <div
+                            id="calculatedSignature"
+                            class="response-area bg-white text-gray-900 text-xs p-2 rounded-md"
+                        >
+                            Click "Calculate Signature"
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    class="mb-6 p-4 bg-green-50 border border-green-200 rounded-md"
+                >
+                    <h3 class="text-lg font-medium mb-2 text-green-800">
+                        Ingestion with Manual Signature Input
+                    </h3>
+                    <p class="text-sm text-green-700 mb-4">
+                        Copy the Calculated Signature above and paste it here
+                        before ingesting.
+                    </p>
+                    <div>
+                        <label
+                            for="manualSignatureInput"
+                            class="block text-sm font-medium text-green-700 mb-1"
+                            >Signature to Send (<code class="font-mono"
+                                >X-Hub-Signature-256</code
+                            >
+                            Header Value):</label
+                        >
+                        <input
+                            type="text"
+                            id="manualSignatureInput"
+                            placeholder="Paste calculated signature here"
+                            class="w-full rounded-md border-green-300 shadow-sm focus:ring-green-500 focus:border-green-500 p-2.5 text-gray-900"
+                        />
+                    </div>
+                </div>
+
+                <button
+                    id="ingestWebhookBtn"
+                    class="px-6 py-2.5 bg-green-600 text-white font-bold rounded-md shadow-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                >
+                    Ingest Webhook
+                </button>
+                <div
+                    id="ingestWebhookResponse"
+                    class="response-area mt-5 text-sm text-gray-800"
+                ></div>
+            </div>
+
+            <div class="p-6 section bg-white">
+                <h2 class="text-xl font-bold mb-5 text-gray-800">
+                    Task Status (<code class="text-purple-700"
+                        >/api/status/delivery_tasks/{task_id}</code
+                    >)
+                </h2>
+                <div class="flex flex-col md:flex-row gap-4 mb-4 items-end">
+                    <div class="flex-grow">
+                        <label
+                            for="getTaskStatusId"
+                            class="block text-sm font-medium text-gray-700 mb-1"
+                            >Delivery Task ID:</label
+                        >
+                        <input
+                            type="text"
+                            id="getTaskStatusId"
+                            placeholder="Enter Task ID"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 text-gray-900"
+                        />
+                    </div>
+                    <div>
+                        <button
+                            id="getTaskStatusBtn"
+                            class="w-full md:w-auto px-6 py-2.5 bg-purple-600 text-white font-bold rounded-md shadow-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                        >
+                            Get Task Status
+                        </button>
+                    </div>
+                </div>
+                <div
+                    id="getTaskStatusResponse"
+                    class="response-area mt-5 text-sm text-gray-800"
+                ></div>
+            </div>
+        </div>
+
+        <script>
+            // Helper function to safely parse JSON and handle errors
+            function parseJsonResponse(text) {
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    console.error("Failed to parse JSON response:", e);
+                    return { error: "Invalid JSON response", raw: text };
+                }
+            }
+
+            // Function to calculate HMAC SHA256 signature in JavaScript
+            // This function takes the raw payload string and the secret as input
+            async function calculateHmacSha256(secret, payloadString) {
+                if (!secret) {
+                    console.warn(
+                        "No secret provided for signature calculation.",
+                    );
+                    return "Error: No secret available for calculation.";
+                }
+                try {
+                    const encoder = new TextEncoder(); // Always use UTF-8
+                    const key = await crypto.subtle.importKey(
+                        "raw",
+                        encoder.encode(secret),
+                        { name: "HMAC", hash: "SHA-256" },
+                        false,
+                        ["sign"],
+                    );
+                    // Sign the raw payload string bytes, NOT a re-stringified object
+                    const signature = await crypto.subtle.sign(
+                        "HMAC",
+                        key,
+                        encoder.encode(payloadString),
+                    );
+                    const hashArray = Array.from(new Uint8Array(signature));
+                    const hashHex = hashArray
+                        .map((b) => b.toString(16).padStart(2, "0"))
+                        .join("");
+                    return `sha256=${hashHex}`; // Format as sha256=...
+                } catch (e) {
+                    console.error("Signature calculation failed:", e);
+                    return `Error calculating signature: ${e.message}`;
+                }
+            }
+
+            // Function to make API requests
+            async function makeApiRequest(
+                method,
+                endpoint,
+                body = null,
+                headers = {},
+            ) {
+                const serviceUrl = document
+                    .getElementById("serviceUrl")
+                    .value.trim();
+                const url = `${serviceUrl}${endpoint}`;
+                const options = {
+                    method: method,
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...headers,
+                    },
+                    // body is the raw string for POST/PUT, or null for GET/DELETE
+                    body: body, // Pass the body as is (string or null)
+                };
+
+                // For GET or DELETE, remove the body and ensure Content-Type is not set if no body
+                if (method === "GET" || method === "DELETE") {
+                    delete options.body;
+                    if (!body && !headers["Content-Type"]) {
+                        delete options.headers["Content-Type"];
+                    }
+                } else if (
+                    typeof options.body !== "string" &&
+                    options.body !== null
+                ) {
+                    // Ensure body is a string for POST/PUT if it's not null
+                    options.body = JSON.stringify(options.body);
+                }
+
+                console.log(`Making ${method} request to ${url}`);
+                console.log("Headers:", options.headers);
+                console.log("Body:", options.body);
+
+                try {
+                    const response = await fetch(url, options);
+                    const text = await response.text(); // Get response as text first
+                    const data = parseJsonResponse(text); // Then try to parse as JSON
+
+                    // Check for non-2xx status codes
+                    if (!response.ok) {
+                        console.error(
+                            `API Error: ${response.status} ${response.statusText}`,
+                            data,
+                        );
+                        return {
+                            status: response.status,
+                            statusText: response.statusText,
+                            data: data,
+                        };
+                    }
+
+                    return {
+                        status: response.status,
+                        statusText: response.statusText,
+                        data: data,
+                    };
+                } catch (error) {
+                    console.error("Fetch error:", error);
+                    return {
+                        status: "Error",
+                        statusText: error.message,
+                        data: null,
+                    };
+                }
+            }
+
+            // Global variable to store the fetched secret
+            let fetchedSecret = null;
+
+            // Function to fetch the subscription secret and update display
+            async function fetchAndDisplaySecret() {
+                const subId = document
+                    .getElementById("ingestSubscriptionId")
+                    .value.trim();
+                const secretUsedDisplay =
+                    document.getElementById("secretUsedDisplay");
+                const payloadStringDisplay = document.getElementById(
+                    "payloadStringToSign",
+                );
+                const ingestPayload = document.getElementById("ingestPayload");
+
+                payloadStringDisplay.textContent = ingestPayload.value;
+
+                if (!subId) {
+                    secretUsedDisplay.textContent =
+                        "Enter Subscription ID to fetch secret.";
+                    secretUsedDisplay.classList.remove(
+                        "text-green-600",
+                        "text-red-600",
+                    );
+                    secretUsedDisplay.classList.add("text-gray-800");
+                    fetchedSecret = null; // Clear fetched secret
+                    return;
+                }
+
+                secretUsedDisplay.textContent = "Fetching secret...";
+                secretUsedDisplay.classList.remove(
+                    "text-green-600",
+                    "text-red-600",
+                );
+                secretUsedDisplay.classList.add("text-gray-800");
+                fetchedSecret = null; // Clear previous secret while fetching
+
+                // Fetch the subscription details to get the secret
+                const subscriptionResult = await makeApiRequest(
+                    "GET",
+                    `/api/subscriptions/${subId}`,
+                ); // Use /api/v1
+
+                if (subscriptionResult.status === 200) {
+                    const subscriptionData = subscriptionResult.data;
+                    if (subscriptionData && subscriptionData.secret) {
+                        fetchedSecret = subscriptionData.secret;
+                        secretUsedDisplay.textContent = `Fetched Secret: "${fetchedSecret}"`;
+                        secretUsedDisplay.classList.remove(
+                            "text-red-600",
+                            "text-gray-800",
+                        );
+                        secretUsedDisplay.classList.add("text-green-600");
+                    } else {
+                        fetchedSecret = null; // No secret found
+                        secretUsedDisplay.textContent =
+                            "No secret found for this subscription. Signature calculation not possible.";
+                        secretUsedDisplay.classList.remove(
+                            "text-green-600",
+                            "text-red-600",
+                        );
+                        secretUsedDisplay.classList.add("text-gray-800");
+                    }
+                } else if (subscriptionResult.status === 404) {
+                    fetchedSecret = null; // Subscription not found
+                    secretUsedDisplay.textContent = `Error: Subscription not found (${subscriptionResult.status}).`;
+                    secretUsedDisplay.classList.remove(
+                        "text-green-600",
+                        "text-gray-800",
+                    );
+                    secretUsedDisplay.classList.add("text-red-600");
+                } else {
+                    fetchedSecret = null; // Error fetching
+                    secretUsedDisplay.textContent = `Error fetching secret (${subscriptionResult.status}).`;
+                    secretUsedDisplay.classList.remove(
+                        "text-green-600",
+                        "text-gray-800",
+                    );
+                    secretUsedDisplay.classList.add("text-red-600");
+                }
+            }
+
+            // --- Event Listeners ---
+
+            // Create Subscription
+            document
+                .getElementById("createSubscriptionBtn")
+                .addEventListener("click", async () => {
+                    const targetUrl = document
+                        .getElementById("createTargetUrl")
+                        .value.trim();
+                    const secret = document
+                        .getElementById("createSecret")
+                        .value.trim();
+                    const eventTypeFilter = document
+                        .getElementById("createEventTypeFilter")
+                        .value.trim();
+                    const responseDiv = document.getElementById(
+                        "createSubscriptionResponse",
+                    );
+
+                    if (!targetUrl) {
+                        responseDiv.textContent =
+                            "Error: Target URL is required.";
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-red-600"; // Apply error styling
+                        return;
+                    }
+
+                    const body = { target_url: targetUrl };
+                    if (secret) body.secret = secret;
+                    if (eventTypeFilter)
+                        body.event_type_filter = eventTypeFilter;
+
+                    responseDiv.textContent = "Loading...";
+                    responseDiv.className =
+                        "response-area mt-5 text-sm text-gray-800"; // Reset styling
+
+                    const result = await makeApiRequest(
+                        "POST",
+                        "/api/subscriptions",
+                        body,
+                    ); // Use /api/v1
+
+                    if (result.status >= 200 && result.status < 300) {
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-green-600"; // Success styling
+                        responseDiv.textContent = `Success (${result.status}):\n${JSON.stringify(result.data, null, 2)}`;
+                    } else {
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-red-600"; // Error styling
+                        responseDiv.textContent = `Error (${result.status} ${result.statusText}):\n${JSON.stringify(result.data, null, 2)}`;
+                    }
+                });
+
+            // List Subscriptions
+            document
+                .getElementById("listSubscriptionsBtn")
+                .addEventListener("click", async () => {
+                    const responseDiv = document.getElementById(
+                        "listSubscriptionsResponse",
+                    );
+                    responseDiv.textContent = "Loading...";
+                    responseDiv.className =
+                        "response-area mt-5 text-sm text-gray-800"; // Reset styling
+
+                    const result = await makeApiRequest(
+                        "GET",
+                        "/api/subscriptions",
+                    ); // Use /api/v1
+
+                    if (result.status >= 200 && result.status < 300) {
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-green-600"; // Success styling
+                        responseDiv.textContent = `Success (${result.status}):\n${JSON.stringify(result.data, null, 2)}`;
+                    } else {
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-red-600"; // Error styling
+                        responseDiv.textContent = `Error (${result.status} ${result.statusText}):\n${JSON.stringify(result.data, null, 2)}`;
+                    }
+                });
+
+            // Get Subscription by ID
+            document
+                .getElementById("getSubscriptionBtn")
+                .addEventListener("click", async () => {
+                    const subId = document
+                        .getElementById("getSubscriptionId")
+                        .value.trim();
+                    const responseDiv = document.getElementById(
+                        "getSubscriptionResponse",
+                    );
+
+                    if (!subId) {
+                        responseDiv.textContent =
+                            "Error: Subscription ID is required.";
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-red-600"; // Apply error styling
+                        return;
+                    }
+
+                    responseDiv.textContent = "Loading...";
+                    responseDiv.className =
+                        "response-area mt-5 text-sm text-gray-800"; // Reset styling
+
+                    const result = await makeApiRequest(
+                        "GET",
+                        `/api/subscriptions/${subId}`,
+                    ); // Use /api/v1
+
+                    if (result.status >= 200 && result.status < 300) {
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-green-600"; // Success styling
+                        responseDiv.textContent = `Success (${result.status}):\n${JSON.stringify(result.data, null, 2)}`;
+                    } else {
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-red-600"; // Error styling
+                        responseDiv.textContent = `Error (${result.status} ${result.statusText}):\n${JSON.stringify(result.data, null, 2)}`;
+                    }
+                });
+
+            // Update Subscription by ID
+            document
+                .getElementById("updateSubscriptionBtn")
+                .addEventListener("click", async () => {
+                    const subId = document
+                        .getElementById("updateSubscriptionId")
+                        .value.trim();
+                    const targetUrl = document
+                        .getElementById("updateTargetUrl")
+                        .value.trim();
+                    const secret = document
+                        .getElementById("updateSecret")
+                        .value.trim();
+                    const eventTypeFilter = document
+                        .getElementById("updateEventTypeFilter")
+                        .value.trim();
+                    const responseDiv = document.getElementById(
+                        "updateSubscriptionResponse",
+                    );
+
+                    if (!subId) {
+                        responseDiv.textContent =
+                            "Error: Subscription ID is required.";
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-red-600"; // Apply error styling
+                        return;
+                    }
+
+                    const body = {};
+                    if (targetUrl) body.target_url = targetUrl;
+                    if (secret) body.secret = secret; // Allow updating secret
+                    if (eventTypeFilter)
+                        body.event_type_filter = eventTypeFilter;
+
+                    if (Object.keys(body).length === 0) {
+                        responseDiv.textContent =
+                            "Error: Provide at least one field to update (Target URL, Secret, or Event Type Filter).";
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-red-600"; // Apply error styling
+                        return;
+                    }
+
+                    responseDiv.textContent = "Loading...";
+                    responseDiv.className =
+                        "response-area mt-5 text-sm text-gray-800"; // Reset styling
+
+                    const result = await makeApiRequest(
+                        "PUT",
+                        `/api/subscriptions/${subId}`,
+                        body,
+                    ); // Use /api/v1
+
+                    if (result.status >= 200 && result.status < 300) {
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-green-600"; // Success styling
+                        responseDiv.textContent = `Success (${result.status}):\n${JSON.stringify(result.data, null, 2)}`;
+                    } else {
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-red-600"; // Error styling
+                        responseDiv.textContent = `Error (${result.status} ${result.statusText}):\n${JSON.stringify(result.data, null, 2)}`;
+                    }
+                });
+
+            // Delete Subscription by ID
+            document
+                .getElementById("deleteSubscriptionBtn")
+                .addEventListener("click", async () => {
+                    const subId = document
+                        .getElementById("deleteSubscriptionId")
+                        .value.trim();
+                    const responseDiv = document.getElementById(
+                        "deleteSubscriptionResponse",
+                    );
+
+                    if (!subId) {
+                        responseDiv.textContent =
+                            "Error: Subscription ID is required.";
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-red-600"; // Apply error styling
+                        return;
+                    }
+
+                    // Ask for confirmation before deleting
+                    if (
+                        !confirm(
+                            `Are you sure you want to delete subscription ${subId}?`,
+                        )
+                    ) {
+                        responseDiv.textContent = "Deletion cancelled.";
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-gray-800"; // Reset styling
+                        return;
+                    }
+
+                    responseDiv.textContent = "Loading...";
+                    responseDiv.className =
+                        "response-area mt-5 text-sm text-gray-800"; // Reset styling
+
+                    const result = await makeApiRequest(
+                        "DELETE",
+                        `/api/subscriptions/${subId}`,
+                    ); // Use /api/v1
+
+                    if (result.status >= 200 && result.status < 300) {
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-green-600"; // Success styling
+                        responseDiv.textContent = `Success (${result.status}):\n${JSON.stringify(result.data, null, 2)}`;
+                    } else {
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-red-600"; // Error styling
+                        responseDiv.textContent = `Error (${result.status} ${result.statusText}):\n${JSON.stringify(result.data, null, 2)}`;
+                    }
+                });
+
+            // Calculate Signature Button
+            document
+                .getElementById("calculateSignatureBtn")
+                .addEventListener("click", async () => {
+                    const subId = document
+                        .getElementById("ingestSubscriptionId")
+                        .value.trim();
+                    const payloadText =
+                        document.getElementById("ingestPayload").value;
+                    const signatureDisplay = document.getElementById(
+                        "calculatedSignature",
+                    );
+
+                    if (!subId) {
+                        signatureDisplay.textContent =
+                            "Error: Enter Subscription ID first.";
+                        signatureDisplay.classList.remove(
+                            "text-green-600",
+                            "text-gray-800",
+                        );
+                        signatureDisplay.classList.add("text-red-600");
+                        return;
+                    }
+
+                    if (!fetchedSecret) {
+                        signatureDisplay.textContent =
+                            "Error: Secret not fetched for this Subscription ID. Ensure ID is valid.";
+                        signatureDisplay.classList.remove(
+                            "text-green-600",
+                            "text-gray-800",
+                        );
+                        signatureDisplay.classList.add("text-red-600");
+                        return;
+                    }
+
+                    signatureDisplay.textContent = "Calculating...";
+                    signatureDisplay.classList.remove(
+                        "text-green-600",
+                        "text-red-600",
+                        "text-gray-800",
+                    );
+
+                    const signature = await calculateHmacSha256(
+                        fetchedSecret,
+                        payloadText,
+                    );
+
+                    signatureDisplay.textContent = signature;
+                    if (signature.startsWith("Error")) {
+                        signatureDisplay.classList.remove(
+                            "text-green-600",
+                            "text-gray-800",
+                        );
+                        signatureDisplay.classList.add("text-red-600");
+                    } else {
+                        signatureDisplay.classList.remove(
+                            "text-red-600",
+                            "text-gray-800",
+                        );
+                        signatureDisplay.classList.add("text-green-600");
+                    }
+                });
+
+            // Ingest Webhook Button (Uses Manual Signature Input)
+            document
+                .getElementById("ingestWebhookBtn")
+                .addEventListener("click", async () => {
+                    const subId = document
+                        .getElementById("ingestSubscriptionId")
+                        .value.trim();
+                    const eventType = document
+                        .getElementById("ingestEventType")
+                        .value.trim();
+                    const payloadText =
+                        document.getElementById("ingestPayload").value; // Get raw text
+                    const manualSignature = document
+                        .getElementById("manualSignatureInput")
+                        .value.trim(); // Get signature from manual input
+                    const secretHeaderName = document
+                        .getElementById("secretHeaderName")
+                        .value.trim(); // Get secret header name
+                    const eventTypeHeaderName = document
+                        .getElementById("eventTypeHeaderName")
+                        .value.trim(); // Get event type header name
+                    const responseDiv = document.getElementById(
+                        "ingestWebhookResponse",
+                    );
+
+                    if (!subId) {
+                        responseDiv.textContent =
+                            "Error: Subscription ID is required for ingestion.";
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-red-600"; // Apply error styling
+                        return;
+                    }
+
+                    let payload;
+                    try {
+                        payload = JSON.parse(payloadText); // Parse to validate
+                    } catch (e) {
+                        responseDiv.textContent =
+                            "Error: Invalid JSON payload.";
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-red-600"; // Apply error styling
+                        return;
+                    }
+
+                    responseDiv.textContent = "Loading...";
+                    responseDiv.className =
+                        "response-area mt-5 text-sm text-gray-800"; // Reset styling
+
+                    const headers = {
+                        [eventTypeHeaderName]: eventType, // Use the configurable event type header name
+                    };
+
+                    // Add the signature header ONLY if a signature was entered manually
+                    if (manualSignature && secretHeaderName) {
+                        headers[secretHeaderName] = manualSignature;
+                    } else if (fetchedSecret) {
+                        // If a secret exists but no manual signature was provided,
+                        // warn the user or indicate that no signature will be sent.
+                        console.warn(
+                            "Subscription has a secret, but no manual signature provided. Sending without signature.",
+                        );
+                        // Optionally update UI to indicate this
+                    }
+
+                    // Make Ingestion API Call
+                    // Pass the raw payloadText as the body for the request
+                    const result = await makeApiRequest(
+                        "POST",
+                        `/api/ingest/${subId}`,
+                        payloadText,
+                        headers,
+                    ); // Use /api/v1
+
+                    if (result.status >= 200 && result.status < 300) {
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-green-600"; // Success styling
+                        responseDiv.textContent = `Success (${result.status}):\n${JSON.stringify(result.data, null, 2)}`;
+                    } else {
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-red-600"; // Error styling
+                        responseDiv.textContent = `Error (${result.status} ${result.statusText}):\n${JSON.stringify(result.data, null, 2)}`;
+                    }
+                });
+
+            // Get Task Status
+            document
+                .getElementById("getTaskStatusBtn")
+                .addEventListener("click", async () => {
+                    const taskId = document
+                        .getElementById("getTaskStatusId")
+                        .value.trim();
+                    const responseDiv = document.getElementById(
+                        "getTaskStatusResponse",
+                    );
+
+                    if (!taskId) {
+                        responseDiv.textContent =
+                            "Error: Delivery Task ID is required.";
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-red-600"; // Apply error styling
+                        return;
+                    }
+
+                    responseDiv.textContent = "Loading...";
+                    responseDiv.className =
+                        "response-area mt-5 text-sm text-gray-800"; // Reset styling
+
+                    const result = await makeApiRequest(
+                        "GET",
+                        `/api/status/delivery_tasks/${taskId}`,
+                    ); // Use /api/v1
+
+                    if (result.status >= 200 && result.status < 300) {
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-green-600"; // Success styling
+                        responseDiv.textContent = `Success (${result.status}):\n${JSON.stringify(result.data, null, 2)}`;
+                    } else {
+                        responseDiv.className =
+                            "response-area mt-5 text-sm text-red-600"; // Error styling
+                        responseDiv.textContent = `Error (${result.status} ${result.statusText}):\n${JSON.stringify(result.data, null, 2)}`;
+                    }
+                });
+
+            // Update secret display and payload string display when relevant inputs change
+            function updateIngestionDisplays() {
+                const ingestPayload = document.getElementById("ingestPayload");
+                const payloadStringDisplay = document.getElementById(
+                    "payloadStringToSign",
+                );
+
+                payloadStringDisplay.textContent = ingestPayload.value;
+
+                // Fetch secret automatically when Subscription ID changes
+                fetchAndDisplaySecret();
+            }
+
+            // Update display on page load and whenever relevant inputs change
+            window.addEventListener("load", updateIngestionDisplays);
+            document
+                .getElementById("ingestSubscriptionId")
+                .addEventListener("input", updateIngestionDisplays);
+            document
+                .getElementById("ingestPayload")
+                .addEventListener("input", updateIngestionDisplays);
+            // Signature calculation is now triggered by the button, not input change
+            // Secret header name change doesn't need to recalculate, just affects the header sent
+            // document.getElementById('secretHeaderName').addEventListener('input', updateSignatureAndSecretDisplay);
+        </script>
+    </body>
+</html>
