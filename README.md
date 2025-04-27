@@ -315,7 +315,7 @@ This will:
 - Pull public images for `db`, `rabbitmq`, and `redis`.
 - Start all services in detached mode (`-d`).
 
-### Running Database Migrations
+### (Optional) Running Database Migrations
 
 After the `db` service is healthy, run database migrations using the `migrator` service. This sets up the necessary tables.
 
