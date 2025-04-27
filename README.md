@@ -99,6 +99,16 @@ The service follows a microservice-like architecture, leveraging several compone
 
 
 
+
+
+![Architecture_Diagram](https://github.com/user-attachments/assets/c9f80a67-4f49-4ee5-884a-7a03c853180e)
+
+
+
+
+
+
+
 The workflow is as follows:
 
 1.  An external system sends a webhook payload to the `/api/ingest/{sub_id}` endpoint.
