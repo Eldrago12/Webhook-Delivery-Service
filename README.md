@@ -12,6 +12,8 @@ This project implements a robust, scalable, and reliable webhook delivery servic
 
 
 
+
+
 TRY IT OUT HERE!! 🚀
 
 
@@ -60,12 +62,19 @@ You can also try out the Backend-Server via curl or Postman!! 🚀
 This project provides a backend service for managing and delivering webhooks. Key features include:
 
 * **Subscription Management:** API endpoints to create, list, retrieve, update, and delete webhook subscriptions.
+
 * **Asynchronous Ingestion:** An endpoint to receive webhook payloads, quickly acknowledge them, and queue them for background processing.
+
 * **Reliable Delivery:** Background workers attempt to deliver payloads to target URLs.
+
 * **Retry Mechanism:** Automatic retries with exponential backoff for failed deliveries.
+
 * **Logging and Status:** Detailed logging of delivery attempts and an API to check the status of individual deliveries.
+
 * **Caching:** Uses Redis to cache subscription details for faster lookups during delivery.
+
 * **Signature Verification:** Optionally verifies incoming webhook payloads using HMAC-SHA256.
+
 * **Event Type Filtering:** Optionally filters webhook delivery based on event type.
 
 ## Architecture
@@ -73,13 +82,18 @@ This project provides a backend service for managing and delivering webhooks. Ke
 The service follows a microservice-like architecture, leveraging several components orchestrated by Docker Compose:
 
 * **Flask (`app` service):** A lightweight Python web framework used for the API endpoints (Subscription CRUD, Ingestion, Status).
-* **PostgreSQL (`db` service):** A relational database used to store subscription details, delivery tasks, and delivery attempts.
-* **RabbitMQ (`rabbitmq` service):** A message broker used by Celery to queue delivery tasks.
-* **Redis (`redis` service):** An in-memory data structure store used as a cache for subscription details and as the result backend for Celery.
-* **Celery Worker (`worker` service):** A background worker process that consumes tasks from the RabbitMQ queue and handles the actual webhook delivery attempts.
-* **Celery Beat (`beat` service):** A scheduler that periodically runs maintenance tasks, such as cleaning up old delivery logs.
-* **Alembic Migrator (`migrator` service):** A tool for database schema migrations.
 
+* **PostgreSQL (`db` service):** A relational database used to store subscription details, delivery tasks, and delivery attempts.
+
+* **RabbitMQ (`rabbitmq` service):** A message broker used by Celery to queue delivery tasks.
+
+* **Redis (`redis` service):** An in-memory data structure store used as a cache for subscription details and as the result backend for Celery.
+
+* **Celery Worker (`worker` service):** A background worker process that consumes tasks from the RabbitMQ queue and handles the actual webhook delivery attempts.
+
+* **Celery Beat (`beat` service):** A scheduler that periodically runs maintenance tasks, such as cleaning up old delivery logs.
+
+* **Alembic Migrator (`migrator` service):** A tool for database schema migrations.
 
 
 
@@ -88,12 +102,19 @@ The service follows a microservice-like architecture, leveraging several compone
 The workflow is as follows:
 
 1.  An external system sends a webhook payload to the `/api/ingest/{sub_id}` endpoint.
+
 2.  The Flask `app` service receives the request, performs optional signature verification and event type filtering, creates a `DeliveryTask` record in the PostgreSQL database, and immediately queues the task for asynchronous processing using Celery/RabbitMQ. It then returns a `202 Accepted` response.
+
 3.  A Celery worker consumes the task from the queue.
+
 4.  The worker retrieves the subscription details (preferably from the Redis cache, falling back to the database).
+
 5.  The worker attempts to send the webhook payload to the target URL via HTTP `POST`.
+
 6.  Based on the HTTP response or network errors, the worker logs the delivery attempt and updates the `DeliveryTask` status in the database.
+
 7.  If the delivery fails and the maximum retry count has not been reached, the worker schedules the task for a future retry using Celery's retry mechanism with exponential backoff.
+
 8.  The Celery beat service periodically runs a task to clean up `DeliveryAttempt` records older than the `LOG_RETENTION_HOURS` configuration.
 
 ## Core Requirements Implemented
@@ -101,26 +122,41 @@ The workflow is as follows:
 The service successfully implements all core requirements:
 
 * **Subscription Management:** Full CRUD operations are available via the `/api/subscriptions` endpoints. Subscriptions have a unique ID, target URL, and optional secret key and event type filter.
+
 * **Webhook Ingestion:** The `/api/ingest/{sub_id}` endpoint accepts `POST` requests, creates a `DeliveryTask`, and queues it asynchronously, returning a `202 Accepted` response.
+
 * **Asynchronous Delivery Processing:** The Celery worker processes queued tasks, retrieves subscription details, and attempts HTTP `POST` delivery with a configurable timeout.
+
 * **Retry Mechanism:** Failed deliveries are automatically retried using Celery's built-in retry logic with configurable exponential backoff parameters (`RETRY_BASE_DELAY_SECONDS`, `RETRY_FACTOR`, `MAX_RETRY_DELAY_SECONDS`) and a maximum number of attempts (`MAX_RETRIES`).
+
 * **Delivery Logging:** Each delivery attempt is logged in the `delivery_attempts` table, recording relevant details including outcome, status code, and error information.
+
 * **Log Retention:** A Celery Beat task is configured to periodically clean up `DeliveryAttempt` records older than the `LOG_RETENTION_HOURS` configuration.
+
 * **Status/Analytics Endpoint:** The `/api/v1/status/delivery_tasks/{task_id}` endpoint allows retrieving the status and history for a specific delivery task. (Note: An endpoint to list recent attempts for a subscription was not explicitly implemented but could be added).
 * **Caching:** Redis is used to cache `Subscription` objects after the first lookup, reducing database load for subsequent delivery attempts to the same subscription.
 
 ## Technical Requirements Met
 
 * **Language:** Python.
+
 * **Framework:** Flask for the web API.
+
 * **Database:** PostgreSQL, chosen for its reliability, ACID compliance, and suitability for structured data like subscriptions and logs, even with a potentially high volume of delivery attempts.
+
 * **Asynchronous Tasks / Queueing:** Celery with RabbitMQ as the broker and Redis as the result backend provides a robust and scalable system for handling background tasks and retries.
+
+* **Caching:** Redis is used to cache `Subscription` objects after the first lookup, reducing database load for subsequent delivery attempts to the same subscription.
+
 * **Containerisation:** The entire application stack is containerized using Docker and orchestrated with `docker-compose.yml`. The local setup works with just Docker installed. Development and testing were performed on a Mac device.
+
 * **Deployment:** The application is deployed to AWS Free Tier, with the backend running on an EC2 instance using Docker Compose and the frontend hosted on S3.
 
 ## Bonus Points Achieved
 
 * **Payload Signature Verification:** The ingestion endpoint (`/api/ingest/{sub_id}`) implements signature verification. If a subscription has a secret configured, the incoming request is expected to have a signature header (`X-Webhook-Secret` by default) containing an HMAC-SHA256 hash of the raw payload body, signed with the subscription's secret. Requests with missing or invalid signatures for subscriptions requiring a secret are rejected with a `401 Unauthorized` response.
+
+
 * **Event Type Filtering:** Subscriptions can optionally specify an `event_type_filter`. The ingestion endpoint expects the incoming event type in a header (`X-Webhook-Event` by default). If a subscription has a filter and the incoming event type does not match, the webhook is accepted (`202`) but the delivery task is skipped, and a corresponding message is returned in the response.
 
 ## Database Schema and Indexing
@@ -128,44 +164,70 @@ The service successfully implements all core requirements:
 The database schema consists of three main tables:
 
 * `subscriptions`: Stores details about each webhook subscription.
+
     * `id` (UUID, Primary Key): Unique identifier for the subscription.
+
     * `target_url` (String): The URL where webhooks are sent.
+
     * `secret` (String, Nullable): Optional secret key for signature verification.
+
     * `event_type_filter` (String, Nullable): Optional filter for specific event types.
+
     * `created_at` (DateTime): Timestamp when the subscription was created.
+
     * `updated_at` (DateTime): Timestamp when the subscription was last updated.
 
 * `delivery_tasks`: Represents an instance of an incoming webhook payload that needs to be delivered.
+
     * `id` (UUID, Primary Key): Unique identifier for the delivery task.
+
     * `subscription_id` (UUID, Foreign Key to `subscriptions.id`): Links the task to a specific subscription.
+
     * `payload` (JSONB): The original JSON payload of the webhook.
+
     * `status` (String): Current status of the task (e.g., 'pending', 'retrying', 'succeeded', 'failed').
+
     * `attempts_count` (Integer): Number of delivery attempts made so far.
+
     * `created_at` (DateTime): Timestamp when the task was created.
+
     * `last_attempt_at` (DateTime, Nullable): Timestamp of the last delivery attempt.
+
     * `next_attempt_at` (DateTime, Nullable): Timestamp scheduled for the next retry attempt.
+
     * `last_http_status` (Integer, Nullable): HTTP status code of the last attempt.
+
     * `last_error` (String, Nullable): Details of the last error encountered.
 
 * `delivery_attempts`: Logs each individual attempt to deliver a `DeliveryTask`.
+
     * `id` (UUID, Primary Key): Unique identifier for the attempt log.
+
     * `delivery_task_id` (UUID, Foreign Key to `delivery_tasks.id`): Links the attempt to a task.
+
     * `attempt_number` (Integer): The sequential number of this attempt for the task.
+
     * `outcome` (String): Result of the attempt ('success', 'failed_attempt', 'permanently_failed').
+
     * `http_status` (Integer, Nullable): HTTP status code received.
+
     * `error_details` (String, Nullable): Specific error message.
+
     * `timestamp` (DateTime): Timestamp of the attempt.
 
 **Indexing Strategy:**
 
 * `subscriptions`:
+
     * Index on `id` (Primary Key is automatically indexed).
     * Consider an index on `event_type_filter` if filtering is heavily used.
+
 * `delivery_tasks`:
     * Index on `id` (Primary Key).
     * Index on `subscription_id` (Foreign Key is typically indexed, but confirm). This is crucial for retrieving tasks for a specific subscription.
     * Index on `status`: Useful for querying tasks in specific states (e.g., 'pending', 'retrying').
     * Index on `next_attempt_at`: Critical for the Celery worker to efficiently find tasks that are ready for retry.
+
 * `delivery_attempts`:
     * Index on `id` (Primary Key).
     * Index on `delivery_task_id` (Foreign Key): Essential for retrieving all attempts for a specific task.
