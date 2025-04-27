@@ -82,7 +82,7 @@
                         <input
                             type="text"
                             id="serviceUrl"
-                            value="http://54.175.17.226:8000"
+                            value="https://d2zpp4v3snrpit.cloudfront.net/api"
                             class="w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2.5 text-gray-900 bg-white"
                         />
                     </div>
@@ -134,7 +134,7 @@
             <div class="mb-8 p-6 section bg-white">
                 <h2 class="text-2xl font-bold mb-5 text-gray-800">
                     Subscriptions (<code class="text-blue-700"
-                        >/api/subscriptions</code
+                        >/subscriptions</code
                     >)
                 </h2>
 
@@ -366,7 +366,7 @@
             <div class="mb-8 p-6 section bg-gray-50">
                 <h2 class="text-xl font-bold mb-5 text-gray-800">
                     Ingestion (<code class="text-green-700"
-                        >/api/ingest/{sub_id}</code
+                        >/ingest/{sub_id}</code
                     >)
                 </h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
@@ -523,7 +523,7 @@
             <div class="p-6 section bg-white">
                 <h2 class="text-xl font-bold mb-5 text-gray-800">
                     Task Status (<code class="text-purple-700"
-                        >/api/status/delivery_tasks/{task_id}</code
+                        >/status/delivery_tasks/{task_id}</code
                     >)
                 </h2>
                 <div class="flex flex-col md:flex-row gap-4 mb-4 items-end">
@@ -714,7 +714,7 @@
                 // Fetch the subscription details to get the secret
                 const subscriptionResult = await makeApiRequest(
                     "GET",
-                    `/api/subscriptions/${subId}`,
+                    `/subscriptions/${subId}`,
                 ); // Use /api/v1
 
                 if (subscriptionResult.status === 200) {
@@ -794,7 +794,7 @@
 
                     const result = await makeApiRequest(
                         "POST",
-                        "/api/subscriptions",
+                        "/subscriptions",
                         body,
                     ); // Use /api/v1
 
@@ -822,7 +822,7 @@
 
                     const result = await makeApiRequest(
                         "GET",
-                        "/api/subscriptions",
+                        "/subscriptions",
                     ); // Use /api/v1
 
                     if (result.status >= 200 && result.status < 300) {
@@ -861,7 +861,7 @@
 
                     const result = await makeApiRequest(
                         "GET",
-                        `/api/subscriptions/${subId}`,
+                        `/subscriptions/${subId}`,
                     ); // Use /api/v1
 
                     if (result.status >= 200 && result.status < 300) {
@@ -923,7 +923,7 @@
 
                     const result = await makeApiRequest(
                         "PUT",
-                        `/api/subscriptions/${subId}`,
+                        `/subscriptions/${subId}`,
                         body,
                     ); // Use /api/v1
 
@@ -975,7 +975,7 @@
 
                     const result = await makeApiRequest(
                         "DELETE",
-                        `/api/subscriptions/${subId}`,
+                        `/subscriptions/${subId}`,
                     ); // Use /api/v1
 
                     if (result.status >= 200 && result.status < 300) {
@@ -1120,7 +1120,7 @@
                     // Pass the raw payloadText as the body for the request
                     const result = await makeApiRequest(
                         "POST",
-                        `/api/ingest/${subId}`,
+                        `/ingest/${subId}`,
                         payloadText,
                         headers,
                     ); // Use /api/v1
@@ -1161,7 +1161,7 @@
 
                     const result = await makeApiRequest(
                         "GET",
-                        `/api/status/delivery_tasks/${taskId}`,
+                        `/status/delivery_tasks/${taskId}`,
                     ); // Use /api/v1
 
                     if (result.status >= 200 && result.status < 300) {
